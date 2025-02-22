@@ -1,0 +1,5 @@
+# ignore all pyc files.
+*.pyc
+1.ipynb
+train.py
+deep_q_network.py
