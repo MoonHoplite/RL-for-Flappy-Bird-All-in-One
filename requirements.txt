@@ -1,0 +1,6 @@
+numpy==2.2.3
+opencv_python==4.11.0.86
+pygame==2.6.1
+scipy==1.15.2
+tensorflow==2.18.0
+torch==2.5.1+cu124
