@@ -14,7 +14,7 @@ class TrainingArguments:
         self.replay_memory: int = 50000 # Max number of replay steps for DQN
         self.synchronize_steps: int = 1000  # Steps of
         self.jump_prob: float = 0.1 # Jump probability for DQN during observation stage
-        self.batch_size: int = 512  # Also is the maximum number of replay for VPG and PPO
+        self.batch_size: int = 1024 # Also is the maximum number of replay for VPG and PPO
         self.gamma: float = 0.99    # Discount factor for DQN, VPG and PPO
         self.save_interval: int = 20000 # Auto save interval. The unit is step (frame) for DQN, epoch for VPG and PPO
         self.load_checkpoint: Optional[str] = None  # Specify a path for saved model. Should include both model parameters and optimizer states 
@@ -25,11 +25,12 @@ class TrainingArguments:
         self.lr_policy: float = 1e-6   # Learning rate for policy model in VPG and PPO
         self.max_t: int = 1000000    # Max number of steps (frames) for DQN
         self.lam: float = 0.95 # Discount factor used in GAE
-        self.num_epochs: int = 10000 # Number of epochs for VPG and PPO
-        self.clip_ratio: float = 0.1   # Clip ratio for PPO
-        
-        self.num_policy_updates: int = 2 # Number of policy model updates for every batch of data
-        self.num_value_updates: int = 2  # Number of value model updates for every batch of data
+        self.num_epochs: int = 1000 # Number of epochs for VPG and PPO
+        self.clip_ratio: float = 0.2   # Clip ratio for PPO
+        self.num_policy_updates: int = 3 # Number of policy model updates for every batch of data
+        self.num_value_updates: int = 3  # Number of value model updates for every batch of data
+        self.horizon: int = 8192    # Horizon for PPO
+        self.num_updates: int = 3   # Number of updates for every batch of data
 
         for key, value in kwargs.items():
             if hasattr(self, key):

@@ -66,12 +66,8 @@ class VPG_p(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(conv_out_shape, 512),
             nn.ReLU(),
-            nn.Dropout(0.5),
         )
         self.last = nn.Linear(512, output_shape)
-        self.last.bias.data.fill_(0)
-        self.last.bias.data[0] = 0.0  # 不跳跃的初始偏置
-        self.last.bias.data[1] = -2.   # 跳跃的初始偏置
         
         
     def _get_conv_output(self, shape: tuple) -> int:
