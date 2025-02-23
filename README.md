@@ -3,6 +3,7 @@
 ## 介绍
 这个项目实现了多种强化学习方法，并以 Flappy Bird 为例进行展示。
 
+[![Watch the video](https://github.com/MoonHoplite/RL-for-Flappy-Bird-All-in-One/blob/master/assets/thumbnail.jpg)](https://github.com/MoonHoplite/RL-for-Flappy-Bird-All-in-One/blob/master/assets/demo.mp4)
 
 ## 方法
 * Value-based 方法: DQN (Deep Q-Network), DDQN (Dueling Deep Q-Network)
