@@ -29,7 +29,7 @@ class RLAlgorithms(ABC):
         frame_shape = self.config.input_shape[1:]
         frame = cv2.cvtColor(cv2.resize(frame, frame_shape), cv2.COLOR_BGR2GRAY)
         _, frame = cv2.threshold(frame, 1, 255, cv2.THRESH_BINARY)
-        return frame
+        return frame / 255.
         
     
 class DQN(RLAlgorithms):
@@ -402,21 +402,21 @@ class PPO(RLAlgorithms):
         self.logger = {"Policy Loss": 0., "Value Loss": 0., "Entropy": 0., "KL Divergence": 0., "Num": 0}
         
     
-    def policy_criterion(self, obs: Tensor, actions: Tensor, advantages: Tensor, log_probs_old: Tensor) -> Tensor:
+    def policy_criterion(self, obs: Tensor, actions: Tensor, advantages: Tensor, log_probs_old: Tensor, entropy_coef: float=0.1) -> Tensor:
         # calculate policy loss, kl divergence and entropy
         logits = self.policy_net(obs)
         action_dist = torch.distributions.Categorical(probs=logits)
         log_probs = action_dist.log_prob(actions)
         ratio = torch.exp(log_probs - log_probs_old)
         clip_advantages = torch.clamp(ratio, 1 - self.config.clip_ratio, 1 + self.config.clip_ratio) * advantages
+        entropy = action_dist.entropy().mean().item()
         
         with torch.no_grad():
-            entropy = action_dist.entropy().mean().item()
             kl = ((ratio - 1) - (log_probs - log_probs_old)).mean().item()
             self.logger["Entropy"] += entropy
             self.logger["KL Divergence"] += kl
         
-        return -(torch.min(ratio * advantages, clip_advantages)).mean()
+        return -(torch.min(ratio * advantages, clip_advantages)).mean() + entropy * entropy_coef
     
     
     def value_criterion(self, obs: Tensor, returns: Tensor) -> Tensor:
@@ -450,11 +450,12 @@ class PPO(RLAlgorithms):
                     policy_loss.backward()
                     self.policy_optimizer.step()
                     self.logger["Policy Loss"] += policy_loss.item()
-                
-                    self.value_optimizer.zero_grad()
-                    value_loss = self.value_criterion(obs, returns)
-                    value_loss.backward()
-                    self.value_optimizer.step()
+
+                    for _ in range(self.config.num_value_updates):
+                        self.value_optimizer.zero_grad()
+                        value_loss = self.value_criterion(obs, returns)
+                        value_loss.backward()
+                        self.value_optimizer.step()
                     self.logger["Value Loss"] += value_loss.item()
                     self.logger["Num"] += 1
 
@@ -480,11 +481,11 @@ class PPO(RLAlgorithms):
             
             # print the training information
             print(
-                f"Epoch: {epoch}, "
-                f"Reward: {total_reward / len(data):.4f}, "
-                f"Policy Loss: {self.logger['Policy Loss'] / self.logger["Num"]:.4f}, "
-                f"Value Loss: {self.logger['Value Loss'] / self.logger["Num"]:.4f}, "
-                f"Entropy: {self.logger['Entropy'] / self.logger["Num"]:.4f}, "
+                f"Epoch: {epoch} / "
+                f"Reward: {total_reward / len(data):.4f} / "
+                f"Policy Loss: {self.logger['Policy Loss'] / self.logger["Num"]:.4f} / "
+                f"Value Loss: {self.logger['Value Loss'] / self.logger["Num"]:.4f} / "
+                f"Entropy: {self.logger['Entropy'] / self.logger["Num"]:.4f} / "
                 f"KL Divergence: {self.logger['KL Divergence'] / self.logger["Num"]:.4f}"
                 )
             self.logger["Policy Loss"] = 0.
@@ -512,13 +513,14 @@ class PPO(RLAlgorithms):
         # note that the buffer size must be large enough for at least one complete trajectory
         while True:
             # choose an action based on current policy
-            obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(self.config.device)
-            action_dist = self.policy_net(obs_tensor)
-            value = self.value_net(obs_tensor).item()
-            action_dist = torch.distributions.Categorical(action_dist)
-            action = action_dist.sample()
-            log_prob = action_dist.log_prob(action)
-            action = action.item()
+            with torch.no_grad():
+                obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(self.config.device)
+                action_dist = self.policy_net(obs_tensor)
+                value = self.value_net(obs_tensor).item()
+                action_dist = torch.distributions.Categorical(action_dist)
+                action = action_dist.sample()
+                log_prob = action_dist.log_prob(action)
+                action = action.item()
             
             # game step to a new state
             obs_next_single, reward, terminal = self.game_state.frame_step(action)
@@ -538,6 +540,19 @@ class PPO(RLAlgorithms):
                 replay_buffer.end_trajectory()
             else:
                 obs = obs_next
+    
+    
+class GRPO(RLAlgorithms):
+    def __init__(self, config: TrainingArguments):
+        super(GRPO, self).__init__(config)
+        
+    
+    def process_frame(self, frame):
+        return super().process_frame(frame)
+    
+    # in progress
+    
+        
     
     
 class Buffer:
@@ -594,7 +609,7 @@ class Buffer:
         self.start_idx = self.cur_idx
     
     
-    def get(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]:
+    def get(self) -> Tuple[Dataset, float]:
         # cut the last incomplete episode
         idx = self.start_idx
         self.advantages = self.advantages[:idx]
@@ -605,6 +620,11 @@ class Buffer:
         self.advantages = (self.advantages - adv_mean) / (adv_std + 1e-8)
         
         return CustomDataset(self.obs[:idx], self.actions[:idx], self.returns[:idx], self.advantages, self.logps[:idx]), self.rewards[:idx].sum()
+    
+    
+    def save(self, path: str) -> None:
+        # save the buffer
+        np.savez(path, obs=self.obs, actions=self.actions, advantages=self.advantages, returns=self.returns, logps=self.logps, rewards=self.rewards, values=self.values)
     
     
 class CustomDataset(Dataset):

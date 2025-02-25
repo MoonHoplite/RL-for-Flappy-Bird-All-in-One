@@ -3,3 +3,6 @@
 1.ipynb
 train.py
 deep_q_network.py
+trainer_copy.py
+/saved_models
+1.npz
