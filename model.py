@@ -22,22 +22,27 @@ class DQN_q(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
+            nn.BatchNorm2d(32),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
         )
         conv_out_shape = self._get_conv_output(input_shape)
         if dueling:
             self.fc = nn.Sequential(
                 nn.Linear(conv_out_shape, 512),
                 nn.ReLU(),
+                nn.Dropout(0.2),
                 Dueling(output_shape)
             )
         else:
             self.fc = nn.Sequential(
                 nn.Linear(conv_out_shape, 512),
                 nn.ReLU(),
+                nn.Dropout(0.2),
                 nn.Linear(512, output_shape)
             )
         
@@ -57,17 +62,24 @@ class VPG_p(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
+            nn.BatchNorm2d(32),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
         )
         conv_out_shape = self._get_conv_output(input_shape)
         self.fc = nn.Sequential(
             nn.Linear(conv_out_shape, 512),
+            nn.Dropout(0.2),
             nn.ReLU(),
         )
         self.last = nn.Linear(512, output_shape)
+        
+        self.last.bias.data[0] = 2.0
+        self.last.bias.data[1] = 0.0
         
         
     def _get_conv_output(self, shape: tuple) -> int:

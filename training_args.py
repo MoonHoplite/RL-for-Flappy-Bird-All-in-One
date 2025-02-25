@@ -8,7 +8,7 @@ class TrainingArguments:
         self.input_shape: tuple = (4, 80, 80)   # The shape of "states"
         self.actions: int = 2   # The number of actions
         self.initial_epsilon: float = 1 # Initial value of ε-greedy strategy, will decay linearly to final epsilon
-        self.final_epsilon: float = 0.00001 # Final value of ε-greedy strategy
+        self.final_epsilon: float = 0.0001 # Final value of ε-greedy strategy
         self.explore: int = 100000  # Explore steps (frames) for DQN
         self.observe: int = 20000   # Observe steps (frames) for DQN
         self.replay_memory: int = 50000 # Max number of replay steps for DQN

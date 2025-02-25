@@ -8,6 +8,8 @@ FPS = 120
 SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 
+# random.seed(11)
+
 pygame.init()
 FPSCLOCK = pygame.time.Clock()
 SCREEN = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
@@ -25,7 +27,6 @@ BACKGROUND_WIDTH = IMAGES['background'].get_width()
 
 PLAYER_INDEX_GEN = cycle([0, 1, 2, 1])
 
-
 class GameState:
     def __init__(self):
         self.score = self.playerIndex = self.loopIter = 0
@@ -34,8 +35,15 @@ class GameState:
         self.basex = 0
         self.baseShift = IMAGES['base'].get_width() - BACKGROUND_WIDTH
 
+        # 确定的 pipe [debug]
+        
+
         newPipe1 = getRandomPipe()
         newPipe2 = getRandomPipe()
+        # newPipe1 = random_pipe[0]
+        # newPipe2 = random_pipe[1]
+        self.i = 2
+        
         self.upperPipes = [
             {'x': SCREENWIDTH, 'y': newPipe1[0]['y']},
             {'x': SCREENWIDTH + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
@@ -53,6 +61,7 @@ class GameState:
         self.playerAccY    =   1   # players downward accleration
         self.playerFlapAcc =  -9   # players speed on flapping
         self.playerFlapped = False # True when player flaps
+        
 
     def frame_step(self, input_actions: int):
         pygame.event.pump()
@@ -101,8 +110,11 @@ class GameState:
             lPipe['x'] += self.pipeVelX
 
         # add new pipe when first pipe is about to touch left of screen
+        "[Debug]"
         if 0 < self.upperPipes[0]['x'] < 5:
             newPipe = getRandomPipe()
+            # newPipe = random_pipe[self.i]
+            self.i = (self.i + 1) % 5
             self.upperPipes.append(newPipe[0])
             self.lowerPipes.append(newPipe[1])
 
@@ -112,7 +124,7 @@ class GameState:
             self.lowerPipes.pop(0)
 
         # check if crash here
-        isCrash = checkCrash({'x': self.playerx, 'y': self.playery,
+        isCrash, isCrashOnPipe = checkCrash({'x': self.playerx, 'y': self.playery,
                              'index': self.playerIndex},
                             self.upperPipes, self.lowerPipes)
         if isCrash:
@@ -120,7 +132,10 @@ class GameState:
             #SOUNDS['die'].play()
             terminal = True
             self.__init__()
-            reward = -1
+            if isCrashOnPipe:
+                reward = -1
+            else:
+                reward = -2
 
         # draw sprites
         SCREEN.blit(IMAGES['background'], (0,0))
@@ -141,6 +156,7 @@ class GameState:
         #print self.upperPipes[0]['y'] + PIPE_HEIGHT - int(BASEY * 0.2)
         return image_data, reward, terminal
 
+@staticmethod
 def getRandomPipe():
     """returns a randomly generated pipe"""
     # y of gap between upper and lower pipe
@@ -180,7 +196,7 @@ def checkCrash(player, upperPipes, lowerPipes):
 
     # if player crashes into ground
     if player['y'] + player['h'] >= BASEY - 1:
-        return True
+        return True, False
     else:
 
         playerRect = pygame.Rect(player['x'], player['y'],
@@ -201,9 +217,9 @@ def checkCrash(player, upperPipes, lowerPipes):
             lCollide = pixelCollision(playerRect, lPipeRect, pHitMask, lHitmask)
 
             if uCollide or lCollide:
-                return True
+                return True, True
 
-    return False
+    return False, False
 
 def pixelCollision(rect1, rect2, hitmask1, hitmask2):
     """Checks if two objects collide and not just their rects"""
@@ -220,3 +236,6 @@ def pixelCollision(rect1, rect2, hitmask1, hitmask2):
             if hitmask1[x1+x][y1+y] and hitmask2[x2+x][y2+y]:
                 return True
     return False
+
+
+# random_pipe = [getRandomPipe() for _ in range(100)]

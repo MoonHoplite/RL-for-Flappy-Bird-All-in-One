@@ -1,6 +1,5 @@
 import pygame
 import sys
-import random
 from game import wrapped_flappy_bird
 
 # 初始化游戏状态
